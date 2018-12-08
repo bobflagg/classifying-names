@@ -12,21 +12,20 @@ import unicodedata
 
 class NamesDataset(object):
 
-    def __init__(self, directory='/opt/enrichment/data/data/names/', test_size=0.10, random_state=42, verbose=False):
+    def __init__(self, directory='./data/names/', test_size=0.10, random_state=42, verbose=False):
         self.directory = directory
         self.vocabulary = string.ascii_letters + " .,;'"
         self.test_size = test_size
         self.random_state = random_state
         self.verbose = verbose
 
-        self.vocabulary_size = len(self.vocabulary)
+        self.num_chars = len(self.vocabulary)
         self.char2int = {ch: ii for ii, ch in enumerate(self.vocabulary)}
         self.int2char = {ii: ch for ch, ii in self.char2int.items()}
 
-        all_categories, category_lines = self.load_data()
-        X_train, y_train, X_test, y_test = self.build_train_test_split(all_categories, category_lines)
-        self.seq_length = np.max([len(name) for name in X_train + X_test])
-        #X_train_encoded, X_test_encoded = self.encode_names(X_train, X_test)
+        self.languages, language2names = self.load_data()
+        X_train, y_train, X_test, y_test = self.build_train_test_split(self.languages, language2names)
+        self.seq_len = np.max([len(name) for name in X_train + X_test])
         self.embed_names(X_train, X_test)
         self.encode_labels(y_train, y_test)
 
@@ -46,26 +45,27 @@ class NamesDataset(object):
         return [self.unicodeToAscii(line) for line in lines]
 
     def load_data(self):
-        if self.verbose: print("Building the category_names dictionary from data in %s ..." % self.directory)
-        category_lines = {}
-        all_categories = []
+        if self.verbose: print("Building the language2names dictionary from data in %s ..." % self.directory)
+
+        language2names = {}
+        languages = []
 
         for fname in os.listdir(self.directory):
             path = os.path.join(self.directory, fname)
-            category = os.path.splitext(os.path.basename(fname))[0]
-            all_categories.append(category)
+            language = os.path.splitext(os.path.basename(fname))[0]
+            languages.append(language)
             lines = self.readLines(path)
-            category_lines[category] = lines
+            language2names[language] = lines
 
         if self.verbose:
-            n_categories = len(all_categories)
-            for i, category in enumerate(all_categories):
-                print("\t%2d. %12s: %4d" % (i + 1, category, len(category_lines[category])))
-            print("\tSample names: %s\n\n" % ", ".join(category_lines['Italian'][:5]))
+            n_languages = len(languages)
+            print("%3s %12s  %4s" % ("  ", "language", "cnt"))
+            for i, language in enumerate(languages):
+                print("\t%2d. %12s: %4d" % (i + 1, language, len(language2names[language])))
 
-        return all_categories, category_lines
+        return languages, language2names
 
-    def build_train_test_split(self, all_categories, category_lines):
+    def build_train_test_split(self, languages, language2names):
         if self.verbose: print("Building train/test split ...")
 
         X_train = []
@@ -74,19 +74,20 @@ class NamesDataset(object):
         X_test = []
         y_test = []
 
-        for i, category in enumerate(all_categories):
+        if self.verbose: print(" %12s   #train    #test" % ("language",))
+        for i, language in enumerate(languages):
             names_train, names_test = train_test_split(
-                category_lines[category],
+                language2names[language],
                 test_size=self.test_size,
                 random_state=self.random_state
             )
             X_train.extend(names_train)
-            y_train.extend([category] * len(names_train))
+            y_train.extend([language] * len(names_train))
 
             X_test.extend(names_test)
-            y_test.extend([category] * len(names_test))
+            y_test.extend([language] * len(names_test))
 
-            if self.verbose: print("\t%12s: # train: %5d, # test: %4d" % (category, len(names_train), len(names_test)))
+            if self.verbose: print("\t%12s: # train: %5d, # test: %4d" % (language, len(names_train), len(names_test)))
 
         if self.verbose: print("\t%12s: # train: %5d, # test: %4d\n\n" % ("All", len(X_train), len(X_test)))
 
@@ -131,10 +132,10 @@ class NamesDataset(object):
 
     def names2embeddings(self, names):
         names_encoded = self.names2codes(names)
-        names_embedded = np.zeros((len(names), self.seq_length, self.vocabulary_size), dtype=np.float32)
+        names_embedded = np.zeros((len(names), self.seq_len, self.num_chars), dtype=np.float32)
         index = 0
         for name in names_encoded:
-            position = self.seq_length - len(name)
+            position = self.seq_len - len(name)
             for char in name:
                 names_embedded[index, position, char] = 1
                 position += 1
@@ -142,7 +143,7 @@ class NamesDataset(object):
         return torch.from_numpy(names_embedded)
 
     def embedding2name(self, values, indices):
-        return self.codes2name([int(indices[i]) for i in range(self.seq_length) if values[i] == 1])
+        return self.codes2name([int(indices[i]) for i in range(self.seq_len) if values[i] == 1])
 
     def embeddings2names(self, names):
         batch_size = names.shape[0]
