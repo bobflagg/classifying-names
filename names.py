@@ -215,10 +215,10 @@ class NamesDataset(object):
 
         return train_loader, test_loader
 
-def predict(dataset, model, name):
+def predict(dataset, model, name, rnn=True):
     inputs = dataset.names2embeddings([name])
     model.eval()
-    h = model.init_hidden()
+    if rnn: model.init_hidden()
     if torch.cuda.is_available(): inputs = inputs.cuda()
     output = model(inputs)
     values, indices = torch.topk(output, 1)
