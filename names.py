@@ -2,21 +2,23 @@
 
 import numpy as np
 import os
-from random import shuffle
+import random
 from sklearn.model_selection import train_test_split
 import string
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 import unicodedata
 
+RANDOM_STATE = 4321
 
 class NamesDataset(object):
 
-    def __init__(self, directory='./data/names/', test_size=0.10, random_state=42, verbose=False):
+    def __init__(self, directory='./data/names/', test_size=0.10, random_state=RANDOM_STATE, verbose=False):
         self.directory = directory
         self.vocabulary = string.ascii_letters + " .,;'"
         self.test_size = test_size
         self.random_state = random_state
+        random.seed(random_state)
         self.verbose = verbose
 
         self.num_chars = len(self.vocabulary)
@@ -92,11 +94,11 @@ class NamesDataset(object):
         if self.verbose: print("\t%12s: # train: %5d, # test: %4d\n\n" % ("All", len(X_train), len(X_test)))
 
         Z = list(zip(X_train, y_train))
-        shuffle(Z)
+        random.shuffle(Z)
         X_train, y_train = zip(*Z)
 
         Z = list(zip(X_test, y_test))
-        shuffle(Z)
+        random.shuffle(Z)
         X_test, y_test = zip(*Z)
 
         return X_train, y_train, X_test, y_test
@@ -206,13 +208,22 @@ class NamesDataset(object):
 
     def build_data_loaders(self, batch_size):
         trainset = TensorDataset(self.X_train_embedded, self.y_train_encoded)
-        train_loader = DataLoader(trainset, shuffle=True, batch_size=batch_size)
+        train_loader = DataLoader(trainset, shuffle=False, batch_size=batch_size)
 
         testset = TensorDataset(self.X_test_embedded, self.y_test_encoded)
-        test_loader = DataLoader(testset, shuffle=True, batch_size=batch_size)
+        test_loader = DataLoader(testset, shuffle=False, batch_size=batch_size)
 
         return train_loader, test_loader
 
+def predict(dataset, model, name):
+    inputs = dataset.names2embeddings([name])
+    model.eval()
+    h = model.init_hidden()
+    if torch.cuda.is_available(): inputs = inputs.cuda()
+    output = model(inputs)
+    values, indices = torch.topk(output, 1)
+    language = dataset.codes2labels(indices.cpu().data.numpy())[0]
+    return language
 
 if __name__ == "__main__":
     batch_size = 16
