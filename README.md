@@ -6,6 +6,6 @@ This repo contains a tutorial on [RNNs](https://en.wikipedia.org/wiki/Recurrent_
 1. [Preparing the Data](https://nbviewer.jupyter.org/github/bobflagg/classifying-names/blob/master/Preparing-Names-Data.ipynb)
 2. [Classifying with an RNN](https://nbviewer.jupyter.org/github/bobflagg/classifying-names/blob/master/Classifying-Names-RNN.ipynb)
 3. [Classifying with an LSTM](https://nbviewer.jupyter.org/github/bobflagg/classifying-names/blob/master/Classifying-Names-LSTM.ipynb)
-4. [Classifying with CNNs](https://nbviewer.jupyter.org/github/bobflagg/classifying-names/blob/master/Classifying-Names-CNN.ipynb)
+4. [Classifying with a CNN](https://nbviewer.jupyter.org/github/bobflagg/classifying-names/blob/master/Classifying-Names-CNN.ipynb)
 
 
